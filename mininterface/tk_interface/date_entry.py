@@ -18,6 +18,8 @@ class DateEntry(tk.Frame):
         self.spinbox = tk.Spinbox(self, font=("Arial", 16), width=30, wrap=True)
         self.spinbox.pack(padx=20, pady=20)
         self.spinbox.insert(0, datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4])
+        self.spinbox.focus_set()
+        self.spinbox.icursor(8)
 
         # Bind up/down arrow keys
         self.spinbox.bind("<Up>", self.increment_date)
@@ -47,7 +49,7 @@ class DateEntry(tk.Frame):
         self.bind_all("<Control-v>", lambda event: self.paste_from_clipboard())
 
         # Toggle calendar widget with ctrl+shift+c
-        self.bind_all("<Control-Shift-c>", lambda event: self.toggle_calendar())
+        self.bind_all("<Control-Shift-C>", lambda event: self.toggle_calendar())
 
     def create_calendar(self):
         # Create a frame to hold the calendar
@@ -84,10 +86,11 @@ class DateEntry(tk.Frame):
         # Split the date string by multiple delimiters
         split_input = re.split(r'[- :.]', date_str)
 
-        # Determine which part of the date the caret is on
-        # 0 -> year
-        # 1 -> month
-        # 2 -> day
+        # Determine if the input is a date or datetime
+        if len(split_input) >= 3:
+            # Handle date part
+            part_index = 0 if caret_pos < 5 else 1 if caret_pos < 8 else 2
+            number = int(split_input[part_index])
         # 3 -> hour
         # 4 -> minute
         # 5 -> second
