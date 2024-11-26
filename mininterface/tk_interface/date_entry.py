@@ -1,6 +1,9 @@
 import tkinter as tk
 import re
 from datetime import datetime
+from date_helpers import find_valid_date, find_valid_time, get_part_index
+from date_keybindings import bind_all_events, bind_spinbox_events
+from date_widgets import create_calendar, create_widgets
 
 try:
     from tkcalendar import Calendar
@@ -10,61 +13,9 @@ except ImportError:
 class DateEntry(tk.Frame):
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
-        self.create_widgets()
         self.pack(expand=True, fill=tk.BOTH)
-        self.bind_all_events()
-
-    def create_widgets(self):
-        self.spinbox = tk.Spinbox(self, font=("Arial", 16), width=30, wrap=True)
-        self.spinbox.pack(padx=20, pady=20)
-        self.spinbox.insert(0, datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-4])
-        self.spinbox.focus_set()
-        self.spinbox.icursor(8)
-
-        # Bind up/down arrow keys
-        self.spinbox.bind("<Up>", self.increment_value)
-        self.spinbox.bind("<Down>", self.decrement_value)
-
-        # Bind mouse click on spinbox arrows
-        self.spinbox.bind("<ButtonRelease-1>", self.on_spinbox_click)
-
-        # Bind key release event to update calendar when user changes the input field
-        self.spinbox.bind("<KeyRelease>", self.on_spinbox_change)
-
-        # Toggle calendar button
-        self.toggle_button = tk.Button(self, text="Show/Hide Calendar", command=self.toggle_calendar)
-        self.toggle_button.pack(pady=10)
-
-        if Calendar:
-            self.create_calendar()
-
-    def bind_all_events(self):
-        # Copy to clipboard with ctrl+c
-        self.bind_all("<Control-c>", self.copy_to_clipboard)
-
-        # Select all in the spinbox with ctrl+a
-        self.bind_all("<Control-a>", lambda event: self.select_all())
-
-        # Paste from clipboard with ctrl+v
-        self.bind_all("<Control-v>", lambda event: self.paste_from_clipboard())
-
-        # Toggle calendar widget with ctrl+shift+c
-        self.bind_all("<Control-Shift-C>", lambda event: self.toggle_calendar())
-
-    def create_calendar(self):
-        # Create a frame to hold the calendar
-        self.frame = tk.Frame(self)
-        self.frame.pack(padx=20, pady=20, expand=True, fill=tk.BOTH)
-
-        # Add a calendar widget
-        self.calendar = Calendar(self.frame, selectmode='day', date_pattern='yyyy-mm-dd')
-        self.calendar.place(relwidth=0.7, relheight=0.8, anchor='n', relx=0.5)
-
-        # Bind date selection event
-        self.calendar.bind("<<CalendarSelected>>", self.on_date_select)
-
-        # Initialize calendar with the current date
-        self.update_calendar(self.spinbox.get(), '%Y-%m-%d %H:%M:%S.%f')
+        bind_all_events(self)
+        create_widgets(self)
 
     def toggle_calendar(self, event=None):
         if Calendar:
@@ -79,32 +30,26 @@ class DateEntry(tk.Frame):
     def decrement_value(self, event=None):
         self.change_date(-1)
 
-    def find_valid_date(self):
-        input = self.spinbox.get()
-        # use regex to find the date part
-        date_part = re.search(r'\d{4}-\d{2}-\d{2}', input)
-        if date_part:
-            return date_part.group()
-        return False
-
-    def find_valid_time(self):
-        input = self.spinbox.get()
-        # use regex to find the time part
-        time_part = re.search(r'\d{2}:\d{2}:\d{2}', input)
-        if time_part:
-            return time_part.group()
-        return False
-
     def change_date(self, delta):
         date_str = self.spinbox.get()
         caret_pos = self.spinbox.index(tk.INSERT)
 
-        date = self.find_valid_date()
-        time = self.find_valid_time()
+        date = find_valid_date(self.spinbox.get())
+        time = find_valid_time(self.spinbox.get())  
 
         if date:
             split_input = re.split(r'[- :.]', date_str)
-            part_index = self.get_part_index(caret_pos, len(split_input))
+
+            # Get the caret position to determine which part of the date to change, returns an index of the part
+            # if time is not in the input, the index will always be 2 (day) to change day by default
+            # < 5 = year
+            # < 8 = month
+            # < 11 = day
+            # < 14 = hour
+            # < 17 = minute
+            # < 20 = second
+            # >= 20 = millisecond
+            part_index = get_part_index(caret_pos, len(split_input))
 
             # Increment or decrement the relevant part
             number = int(split_input[part_index])
@@ -128,24 +73,6 @@ class DateEntry(tk.Frame):
                     self.update_calendar(new_value_str, string_format)
             except ValueError:
                 pass
-
-    def get_part_index(self, caret_pos, split_length):
-        if caret_pos < 5:       # year
-            return 0
-        elif caret_pos < 8:     # month
-            return 1
-        elif caret_pos < 11:    # day
-            return 2
-        elif split_length > 3:
-            if caret_pos < 14:  # hour
-                return 3
-            elif caret_pos < 17: # minute
-                return 4
-            elif caret_pos < 20: # second
-                return 5
-            else:               # millisecond
-                return 6
-        return 2
 
     def on_spinbox_click(self, event):
         # Check if the click was on the spinbox arrows
@@ -216,13 +143,9 @@ if __name__ == "__main__":
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
 
-    print(screen_width, screen_height)
-
     # Calculate the position to center the window
     x = (screen_width // 2) - 400
     y = (screen_height // 2) - 600
-
-    print(x, y)
 
     # Set the position of the window
     root.geometry(f"800x600+{x}+{y}")
