@@ -184,16 +184,19 @@ class DateEntry(tk.Frame):
         label = tk.Label(popup, text=message, font=("Arial", 12))
         label.pack(side="top", fill="x", pady=10, padx=10)
 
-        # Center the popup window
-        popup.update_idletasks()
-        width = popup.winfo_width()
-        height = popup.winfo_height()
-        x = (popup.winfo_screenwidth() // 2) - (width // 2)
-        y = (popup.winfo_screenheight() // 2) - (height // 2)
-        popup.geometry(f"{width}x{height}+{x}+{y}")
+        # Position the popup window in the top-left corner of the widget
+        x = self.winfo_rootx()
+        y = self.winfo_rooty()
+        
+        # Position of the popup window has to be "inside" the main window or it will be focused on popup
+        popup.geometry(f"400x100+{x+200}+{y-150}")
 
         # Close the popup after 2 seconds
-        self.after(2000, popup.destroy)
+        self.after(1000, popup.destroy)
+
+        # Keep focus on the spinbox
+        self.spinbox.focus_force()
+
 
     def select_all(self, event=None):
         self.spinbox.selection_range(0, tk.END)
@@ -207,11 +210,28 @@ class DateEntry(tk.Frame):
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.geometry("800x600")
+    # Get the screen width and height
+    # This is calculating the position of the TOTAL dimentions of all screens combined
+    # How to calculate the position of the window on the current screen?
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+
+    print(screen_width, screen_height)
+
+    # Calculate the position to center the window
+    x = (screen_width // 2) - 400
+    y = (screen_height // 2) - 600
+
+    print(x, y)
+
+    # Set the position of the window
+    root.geometry(f"800x600+{x}+{y}")
+    # keep the main widget on top all the time
+    root.wm_attributes("-topmost", False)
+    root.wm_attributes("-topmost", True)
     root.title("Date Editor")
 
     date_entry = DateEntry(root)
     date_entry.pack(expand=True, fill=tk.BOTH)
-
     root.mainloop()
 
